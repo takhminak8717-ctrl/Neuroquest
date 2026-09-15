@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroQuest: Journey into the Brain!</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        neuroYellow: '#FFD166',
+                        neuroPink: '#FF477E',
+                        neuroPurple: '#7209B7',
+                        neuroBlue: '#4CC9F0',
+                        neuroGreen: '#06D6A0',
+                        neuroDark: '#1A0B2E'
+                    },
+                    fontFamily: {
+                        sans: ['Fredoka', 'Outfit', 'sans-serif'],
+                        display: ['Fredoka', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-glow': 'pulseGlow 2s infinite',
+                        'bounce-short': 'bounceShort 0.6s ease infinite alternate'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.8', filter: 'drop-shadow(0 0 15px #4CC9F0)' },
+                            '50%': { opacity: '1', filter: 'drop-shadow(0 0 25px #FF477E)' },
+                        },
+                        bounceShort: {
+                            '0%': { transform: 'translateY(0)' },
+                            '100%': { transform: 'translateY(-8px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts & Lucide Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', 'Outfit', sans-serif;
+            background: #12072B;
+            color: #F8FAFC;
+            overflow-x: hidden;
+        }
+
+        /* Custom Floating Particles Canvas Container */
+        #synapseCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Glassmorphism containers */
+        .glass-panel {
+            background: rgba(30, 16, 58, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .glass-panel-light {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Interactive Brain Hover Effects */
+        .brain-part {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: center;
+        }
+        .brain-part:hover {
+            filter: brightness(1.35) drop-shadow(0 0 12px currentColor);
+            transform: scale(1.03);
+        }
+        .brain-part.active-lobe {
+            filter: brightness(1.5) drop-shadow(0 0 20px currentColor);
+            stroke: #FFFFFF;
+            stroke-width: 4px;
+        }
+
+        /* 3D Flip Card Styles for Mythbusters */
+        .flip-card {
+            perspective: 1000px;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1.5rem;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #12072B;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #7209B7;
+            border-radius: 999px;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen text-slate-100 selection:bg-neuroPink selection:text-white">
+
+    <!-- Synaptic Background Canvas -->
+    <canvas id="synapseCanvas"></canvas>
+
+    <!-- Top Gamification HUD & Header -->
+    <header class="sticky top-0 z-40 w-full glass-panel border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <a href="#" class="flex items-center space-x-3 group">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-neuroPink via-neuroPurple to-neuroBlue flex items-center justify-center shadow-lg shadow-neuroPink/30 group-hover:scale-110 transition-transform">
+                    <i data-lucide="brain" class="w-6 h-6 text-white animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-wide bg-gradient-to-r from-neuroYellow via-neuroPink to-neuroBlue bg-clip-text text-transparent">
+                        NeuroQuest!
+                    </h1>
+                    <p class="text-[10px] text-slate-300 font-medium uppercase tracking-widest">Journey into the Brain</p>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center space-x-6 text-sm font-semibold">
+                <a href="#explorer" class="hover:text-neuroYellow transition-colors flex items-center gap-1.5"><i data-lucide="compass" class="w-4 h-4"></i> Brain Explorer</a>
+                <a href="#neuron-builder" class="hover:text-neuroPink transition-colors flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4"></i> Neuron Builder</a>
+                <a href="#arcade" class="hover:text-neuroBlue transition-colors flex items-center gap-1.5"><i data-lucide="gamepad-2" class="w-4 h-4"></i> Brain Arcade</a>
+                <a href="#myths" class="hover:text-neuroGreen transition-colors flex items-center gap-1.5"><i data-lucide="zap" class="w-4 h-4"></i> Myth Busters</a>
+            </nav>
+
+            <!-- User Gamification Status Bar -->
+            <div class="flex items-center gap-4 bg-slate-900/80 px-4 py-2 rounded-2xl border border-white/10">
+                <!-- Level Badge -->
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-neuroYellow text-slate-950 font-black text-sm flex items-center justify-center shadow-md" id="userLevel">
+                        1
+                    </div>
+                    <div class="hidden sm:block">
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Rank</div>
+                        <div class="text-xs font-bold text-neuroYellow" id="userRankTitle">Cadet Explorer</div>
+                    </div>
+                </div>
+
+                <!-- XP Bar -->
+                <div class="w-24 sm:w-36 flex flex-col gap-1">
+                    <div class="flex justify-between text-[10px] font-bold">
+                        <span class="text-neuroBlue">XP</span>
+                        <span id="xpText" class="text-slate-300">0 / 100</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                        <div id="xpProgressBar" class="h-full bg-gradient-to-r from-neuroBlue to-neuroPink rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Sound FX Toggle -->
+                <button id="soundToggleBtn" aria-label="Toggle Sound Effects" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors border border-white/10">
+                    <i data-lucide="volume-2" id="soundIcon" class="w-5 h-5 text-neuroGreen"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Audio Unlocked Alert Notification -->
+    <div id="audioUnlockBanner" class="fixed bottom-4 right-4 z-50 glass-panel px-4 py-3 rounded-2xl border border-neuroGreen shadow-2xl flex items-center gap-3 animate-bounce cursor-pointer">
+        <i data-lucide="volume-2" class="w-5 h-5 text-neuroGreen"></i>
+        <span class="text-xs font-bold text-white">Click anywhere to enable Sound FX! 🔊</span>
+    </div>
+
+    <main class="relative z-10 space-y-24 pb-20">
+
+        <!-- Hero Section with Friendly Mascot -->
+        <section class="pt-12 px-4 max-w-7xl mx-auto">
+            <div class="glass-panel p-8 sm:p-12 rounded-3xl relative overflow-hidden flex flex-col lg:flex-row items-center gap-8 justify-between">
+                
+                <!-- Background ambient circles -->
+                <div class="absolute -top-24 -left-24 w-96 h-96 bg-neuroPink/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-neuroBlue/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                <!-- Left Text Content -->
+                <div class="space-y-6 max-w-2xl text-center lg:text-left z-10">
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-neuroPurple/40 border border-neuroPink/40 text-neuroYellow text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-neuroYellow animate-spin"></i>
+                        <span>Supercharge Your Mind</span>
+                    </div>
+
+                    <h2 class="text-4xl sm:text-6xl font-black leading-tight tracking-tight">
+                        Explore the <span class="bg-gradient-to-r from-neuroYellow via-neuroPink to-neuroBlue bg-clip-text text-transparent">3-Pound Supercomputer</span> Inside Your Head!
+                    </h2>
+
+                    <p class="text-slate-300 text-base sm:text-lg leading-relaxed font-medium">
+                        Did you know your brain has over <strong class="text-neuroYellow">86 billion neurons</strong> sending messages faster than a Formula 1 race car? Join <strong class="text-neuroPink">Neuron Ned</strong> on an epic interactive quest to unlock your brain's secret superpowers!
+                    </p>
+
+                    <div class="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
+                        <a href="#explorer" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-neuroPink to-neuroPurple font-extrabold text-white text-lg shadow-xl shadow-neuroPink/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
+                            <i data-lucide="play-circle" class="w-6 h-6"></i>
+                            Start Exploring!
+                        </a>
+                        <a href="#neuron-builder" class="px-8 py-4 rounded-2xl glass-panel-light hover:bg-white/10 font-extrabold text-white text-lg transition-all flex items-center gap-3 border border-white/20">
+                            <i data-lucide="cpu" class="w-6 h-6 text-neuroBlue"></i>
+                            Build a Neuron
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Mascot Neuron Ned Box -->
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+                        <!-- Glow effect -->
+                        <div class="absolute inset-0 bg-gradient-to-tr from-neuroYellow to-neuroPink rounded-full blur-2xl opacity-40 animate-pulse"></div>
+                        
+                        <!-- Interactive Ned SVG Mascot -->
+                        <svg id="mascotNed" class="w-full h-full cursor-pointer animate-float filter drop-shadow-2xl" viewBox="0 0 200 200" fill="none">
+                            <!-- Main Brain Body -->
+                            <path d="M 50 100 C 30 60, 70 35, 100 45 C 130 35, 170 60, 150 100 C 170 140, 130 165, 100 155 C 70 165, 30 140, 50 100 Z" fill="#FF477E" stroke="#FFFFFF" stroke-width="5" />
+                            
+                            <!-- Brain Fold Details -->
+                            <path d="M 70 70 C 80 80, 75 100, 65 110" stroke="#D00055" stroke-width="4" stroke-linecap="round" fill="none" />
+                            <path d="M 130 70 C 120 80, 125 100, 135 110" stroke="#D00055" stroke-width="4" stroke-linecap="round" fill="none" />
+                            <path d="M 100 50 L 100 140" stroke="#D00055" stroke-width="3" stroke-dasharray="4 4" fill="none" />
+
+                            <!-- Cute Eyes -->
+                            <circle cx="80" cy="95" r="12" fill="white" />
+                            <circle cx="82" cy="95" r="6" fill="#12072B" />
+                            <circle cx="84" cy="92" r="2" fill="white" />
+
+                            <circle cx="120" cy="95" r="12" fill="white" />
+                            <circle cx="118" cy="95" r="6" fill="#12072B" />
+                            <circle cx="116" cy="92" r="2" fill="white" />
+
+                            <!-- Cheeks -->
+                            <circle cx="68" cy="108" r="7" fill="#FF85A1" opacity="0.8" />
+                            <circle cx="132" cy="108" r="7" fill="#FF85A1" opacity="0.8" />
+
+                            <!-- Big Smile -->
+                            <path d="M 88 115 Q 100 130 112 115" stroke="#12072B" stroke-width="4" stroke-linecap="round" fill="none" />
+                        </svg>
+                    </div>
+
+                    <!-- Ned Dialogue Bubble -->
+                    <div id="nedSpeechBubble" class="mt-2 glass-panel px-6 py-3 rounded-2xl border-2 border-neuroYellow max-w-xs text-center shadow-lg relative cursor-pointer hover:scale-105 transition-transform">
+                        <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-neuroYellow"></div>
+                        <p class="text-xs sm:text-sm font-bold text-neuroYellow flex items-center justify-center gap-2">
+                            <span>"Hi! I'm Neuron Ned! Click me for a brainy tip!"</span>
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Interactive Brain Explorer Section -->
+        <section id="explorer" class="max-w-7xl mx-auto px-4 scroll-mt-24">
+            <div class="text-center space-y-3 mb-10">
+                <h3 class="text-3xl sm:text-5xl font-black tracking-tight">
+                    Interactive <span class="text-neuroBlue">Brain Explorer</span>
+                </h3>
+                <p class="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base">
+                    Click on different lobes of the brain to uncover their superpowers, essential functions, and secret fun facts!
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                
+                <!-- SVG Interactive Brain Diagram -->
+                <div class="lg:col-span-7 glass-panel p-6 sm:p-10 rounded-3xl flex flex-col items-center justify-center relative min-h-[420px]">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Click a Brain Region Below!</span>
+
+                    <svg id="brainSvg" class="w-full max-w-lg h-auto filter drop-shadow-2xl" viewBox="0 0 600 450" fill="none">
+                        <!-- Frontal Lobe -->
+                        <path id="lobe-frontal" class="brain-part" data-part="frontal"
+                              d="M 180 120 C 220 70, 320 60, 370 110 C 350 180, 280 230, 200 230 C 150 230, 130 180, 180 120 Z"
+                              fill="#FF477E" opacity="0.88" />
+                        <text x="250" y="140" fill="white" font-weight="bold" font-size="16" pointer-events="none">Frontal Lobe</text>
+
+                        <!-- Parietal Lobe -->
+                        <path id="lobe-parietal" class="brain-part" data-part="parietal"
+                              d="M 370 110 C 430 80, 490 130, 500 200 C 440 220, 370 210, 350 180 Z"
+                              fill="#4CC9F0" opacity="0.88" />
+                        <text x="410" y="150" fill="white" font-weight="bold" font-size="16" pointer-events="none">Parietal</text>
+
+                        <!-- Occipital Lobe -->
+                        <path id="lobe-occipital" class="brain-part" data-part="occipital"
+                              d="M 500 200 C 530 250, 510 310, 450 320 C 430 280, 440 230, 500 200 Z"
+                              fill="#FFD166" opacity="0.88" />
+                        <text x="460" y="260" fill="#12072B" font-weight="bold" font-size="14" pointer-events="none">Occipital</text>
+
+                        <!-- Temporal Lobe -->
+                        <path id="lobe-temporal" class="brain-part" data-part="temporal"
+                              d="M 230 235 C 330 235, 380 220, 420 290 C 350 340, 240 330, 200 280 Z"
+                              fill="#06D6A0" opacity="0.88" />
+                        <text x="270" y="280" fill="#12072B" font-weight="bold" font-size="16" pointer-events="none">Temporal Lobe</text>
+
+                        <!-- Cerebellum -->
+                        <path id="lobe-cerebellum" class="brain-part" data-part="cerebellum"
+                              d="M 420 325 C 470 325, 490 390, 420 410 C 370 410, 360 350, 420 325 Z"
+                              fill="#7209B7" opacity="0.88" />
+                        <text x="395" y="370" fill="white" font-weight="bold" font-size="14" pointer-events="none">Cerebellum</text>
+
+                        <!-- Brainstem -->
+                        <path id="lobe-brainstem" class="brain-part" data-part="brainstem"
+                              d="M 280 330 C 330 330, 340 430, 290 430 C 260 430, 260 360, 280 330 Z"
+                              fill="#F72585" opacity="0.88" />
+                        <text x="275" y="390" fill="white" font-weight="bold" font-size="12" pointer-events="none">Brainstem</text>
+                    </svg>
+                </div>
+
+                <!-- Lobe Information Dynamic Card -->
+                <div class="lg:col-span-5">
+                    <div id="lobeCard" class="glass-panel p-8 rounded-3xl space-y-6 border-2 border-neuroBlue transition-all duration-300">
+                        <!-- Header / Title -->
+                        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                            <div class="flex items-center gap-3">
+                                <div id="lobeIconBox" class="w-12 h-12 rounded-2xl bg-neuroPink flex items-center justify-center text-white text-xl shadow-lg">
+                                    🧠
+                                </div>
+                                <div>
+                                    <h4 id="lobeTitle" class="text-2xl font-black text-white">Frontal Lobe</h4>
+                                    <span id="lobeSubtitle" class="text-xs font-bold text-neuroYellow uppercase tracking-wider">The Control Center</span>
+                                </div>
+                            </div>
+                            <button id="listenLobeBtn" aria-label="Listen to Lobe Power" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-neuroBlue transition-colors" title="Hear Power Sound">
+                                <i data-lucide="volume-2" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+
+                        <!-- Superpower Badge -->
+                        <div class="bg-slate-900/80 p-4 rounded-2xl border border-white/10 space-y-1">
+                            <span class="text-[10px] uppercase font-black text-neuroBlue tracking-widest">Lobe Superpower</span>
+                            <p id="lobeSuperpower" class="text-sm font-bold text-slate-200">
+                                Decision making, solving math puzzles, planning your day, and controlling your emotions!
+                            </p>
+                        </div>
+
+                        <!-- Fun Fact -->
+                        <div class="space-y-2">
+                            <span class="text-xs font-bold text-neuroYellow flex items-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i> Did You Know?
+                            </span>
+                            <p id="lobeFact" class="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium">
+                                The Frontal Lobe keeps growing until you are around 25 years old! That's why grown-ups are still learning how to make great decisions.
+                            </p>
+                        </div>
+
+                        <!-- Explore XP Reward Button -->
+                        <button id="exploreLobeXpBtn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-neuroGreen to-neuroBlue font-extrabold text-slate-950 text-sm shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                            <span>Mark Lobe Explored (+20 XP)</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Interactive Neuron Builder Mini-Game -->
+        <section id="neuron-builder" class="max-w-7xl mx-auto px-4 scroll-mt-24">
+            <div class="glass-panel p-8 sm:p-12 rounded-3xl space-y-8 relative overflow-hidden border-2 border-neuroPink">
+                
+                <!-- Section Title -->
+                <div class="text-center space-y-3">
+                    <div class="inline-block px-4 py-1 rounded-full bg-neuroPink/20 text-neuroPink font-bold text-xs uppercase tracking-widest">
+                        Interactive Mini-Game
+                    </div>
+                    <h3 class="text-3xl sm:text-5xl font-black">
+                        The <span class="text-neuroPink">Neuron Builder</span>
+                    </h3>
+                    <p class="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base">
+                        Assemble the 5 crucial components of a brain cell. Click parts to snap them onto the wire, then press <strong class="text-neuroYellow">'Fire Signal!'</strong> to send electricity!
+                    </p>
+                </div>
+
+                <!-- Neuron Builder Workspace -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    
+                    <!-- Parts Palette -->
+                    <div class="lg:col-span-4 space-y-3">
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Select Parts to Snap In:</h4>
+
+                        <div class="space-y-2.5" id="neuronPartsPalette">
+                            <button data-part="dendrites" class="neuron-part-btn w-full p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/10 flex items-center justify-between text-left transition-all">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 rounded-xl bg-neuroPink flex items-center justify-center font-bold text-xs">1</span>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">Dendrites</div>
+                                        <div class="text-[10px] text-slate-400">Signal Receivers</div>
+                                    </div>
+                                </div>
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-slate-400 status-icon"></i>
+                            </button>
+
+                            <button data-part="soma" class="neuron-part-btn w-full p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/10 flex items-center justify-between text-left transition-all">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 rounded-xl bg-neuroYellow text-slate-950 flex items-center justify-center font-bold text-xs">2</span>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">Soma (Cell Body)</div>
+                                        <div class="text-[10px] text-slate-400">Command Center</div>
+                                    </div>
+                                </div>
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-slate-400 status-icon"></i>
+                            </button>
+
+                            <button data-part="axon" class="neuron-part-btn w-full p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/10 flex items-center justify-between text-left transition-all">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 rounded-xl bg-neuroBlue flex items-center justify-center font-bold text-xs">3</span>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">Axon Wire</div>
+                                        <div class="text-[10px] text-slate-400">Highway Cable</div>
+                                    </div>
+                                </div>
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-slate-400 status-icon"></i>
+                            </button>
+
+                            <button data-part="myelin" class="neuron-part-btn w-full p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/10 flex items-center justify-between text-left transition-all">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 rounded-xl bg-neuroGreen text-slate-950 flex items-center justify-center font-bold text-xs">4</span>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">Myelin Sheath</div>
+                                        <div class="text-[10px] text-slate-400">Insulating Speed Boost</div>
+                                    </div>
+                                </div>
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-slate-400 status-icon"></i>
+                            </button>
+
+                            <button data-part="synapse" class="neuron-part-btn w-full p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/10 flex items-center justify-between text-left transition-all">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 rounded-xl bg-neuroPurple flex items-center justify-center font-bold text-xs">5</span>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">Synapse Terminals</div>
+                                        <div class="text-[10px] text-slate-400">Signal Transmitter</div>
+                                    </div>
+                                </div>
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-slate-400 status-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas / SVG Assembly Stage -->
+                    <div class="lg:col-span-8 flex flex-col items-center justify-center space-y-6">
+                        <div class="w-full h-72 sm:h-80 bg-slate-950/90 rounded-3xl border-2 border-dashed border-white/20 p-4 relative flex items-center justify-center overflow-hidden">
+                            
+                            <!-- SVG Neuron Representation Stage -->
+                            <svg id="neuronAssemblySvg" class="w-full h-full" viewBox="0 0 700 250">
+                                <!-- Background grid guide lines -->
+                                <line x1="0" y1="125" x2="700" y2="125" stroke="rgba(255,255,255,0.05)" stroke-dasharray="6 6" />
+
+                                <!-- 1. Dendrites (Left Tree Branch) -->
+                                <g id="stage-dendrites" class="opacity-15 transition-opacity duration-500">
+                                    <path d="M 50 125 L 110 125 M 70 125 L 40 80 M 70 125 L 40 170 M 90 125 L 70 60 M 90 125 L 70 190" stroke="#FF477E" stroke-width="6" stroke-linecap="round" />
+                                    <circle cx="40" cy="80" r="5" fill="#FF477E" />
+                                    <circle cx="40" cy="170" r="5" fill="#FF477E" />
+                                </g>
+
+                                <!-- 2. Soma / Cell Body Center -->
+                                <g id="stage-soma" class="opacity-15 transition-opacity duration-500">
+                                    <path d="M 110 125 C 100 80, 160 70, 180 125 C 160 180, 100 170, 110 125 Z" fill="#FFD166" stroke="#FFFFFF" stroke-width="3" />
+                                    <circle cx="145" cy="125" r="14" fill="#12072B" />
+                                    <circle cx="147" cy="123" r="4" fill="#FFD166" />
+                                </g>
+
+                                <!-- 3. Axon Cable Wire -->
+                                <g id="stage-axon" class="opacity-15 transition-opacity duration-500">
+                                    <line x1="180" y1="125" x2="520" y2="125" stroke="#4CC9F0" stroke-width="8" stroke-linecap="round" />
+                                </g>
+
+                                <!-- 4. Myelin Sheath Cushions -->
+                                <g id="stage-myelin" class="opacity-15 transition-opacity duration-500">
+                                    <rect x="210" y="105" width="55" height="40" rx="10" fill="#06D6A0" stroke="#FFFFFF" stroke-width="2" />
+                                    <rect x="280" y="105" width="55" height="40" rx="10" fill="#06D6A0" stroke="#FFFFFF" stroke-width="2" />
+                                    <rect x="350" y="105" width="55" height="40" rx="10" fill="#06D6A0" stroke="#FFFFFF" stroke-width="2" />
+                                    <rect x="420" y="105" width="55" height="40" rx="10" fill="#06D6A0" stroke="#FFFFFF" stroke-width="2" />
+                                </g>
+
+                                <!-- 5. Synapse Terminal Branches -->
+                                <g id="stage-synapse" class="opacity-15 transition-opacity duration-500">
+                                    <path d="M 520 125 L 580 125 M 550 125 L 610 80 M 550 125 L 610 170" stroke="#7209B7" stroke-width="6" stroke-linecap="round" />
+                                    <circle cx="610" cy="80" r="8" fill="#F72585" />
+                                    <circle cx="610" cy="170" r="8" fill="#F72585" />
+                                    <circle cx="580" cy="125" r="8" fill="#F72585" />
+                                </g>
+
+                                <!-- Animated Electric Pulse Spark Ball -->
+                                <circle id="pulseSpark" cx="50" cy="125" r="12" fill="#FFD166" class="hidden filter drop-shadow-[0_0_15px_#FFD166]" />
+                            </svg>
+
+                            <!-- Helper Instruction Banner -->
+                            <div id="assemblyStatusText" class="absolute bottom-3 bg-slate-900/90 border border-white/10 px-4 py-1.5 rounded-xl text-xs font-bold text-neuroYellow">
+                                Assemble all 5 parts to fire the signal!
+                            </div>
+                        </div>
+
+                        <!-- Action Control Buttons -->
+                        <div class="flex flex-wrap gap-4 w-full justify-center">
+                            <button id="fireSignalBtn" disabled class="px-8 py-4 rounded-2xl bg-slate-800 text-slate-500 font-black text-base shadow-lg transition-all flex items-center gap-3 cursor-not-allowed">
+                                <i data-lucide="zap" class="w-5 h-5"></i>
+                                Fire Signal!
+                            </button>
+
+                            <button id="resetNeuronBtn" class="px-6 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-sm border border-white/10 transition-colors">
+                                Reset Cable
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- "Reaction Time & Memory Challenge" Arcade -->
+        <section id="arcade" class="max-w-7xl mx-auto px-4 scroll-mt-24">
+            <div class="text-center space-y-3 mb-10">
+                <div class="inline-block px-4 py-1 rounded-full bg-neuroBlue/20 text-neuroBlue font-bold text-xs uppercase tracking-widest">
+                    Brain Gym & Arcade
+                </div>
+                <h3 class="text-3xl sm:text-5xl font-black">
+                    Reaction & <span class="text-neuroYellow">Memory Arcade</span>
+                </h3>
+                <p class="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base">
+                    Put your brain signals to the ultimate speed test or train your brain's memory bank!
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Arcade Game 1: Quick Tap Reflex Test -->
+                <div class="glass-panel p-6 sm:p-8 rounded-3xl flex flex-col justify-between border-2 border-neuroBlue space-y-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-neuroBlue/20 text-neuroBlue flex items-center justify-center font-bold">
+                                    ⚡
+                                </div>
+                                <h4 class="text-xl font-extrabold text-white">Neural Signal Speed Test</h4>
+                            </div>
+                            <span class="text-xs font-bold text-neuroYellow bg-slate-900 px-3 py-1 rounded-full border border-white/10">Reflexes</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300">
+                            When the box turns <strong class="text-neuroGreen">GREEN</strong>, tap it as fast as you can! Measures signal transit time from eyes to fingers in milliseconds.
+                        </p>
+                    </div>
+
+                    <!-- Interactive Reaction Pad -->
+                    <div id="reactionPad" class="w-full h-56 rounded-2xl bg-slate-900 border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-300 p-4 text-center">
+                        <i data-lucide="mouse-pointer-click" class="w-10 h-10 text-neuroBlue mb-2 animate-bounce"></i>
+                        <h5 id="reactionMainText" class="text-xl font-black text-white">Click Here to Start Test</h5>
+                        <p id="reactionSubText" class="text-xs text-slate-400 mt-1">Wait for GREEN...</p>
+                    </div>
+
+                    <!-- Reflex Scoreboard -->
+                    <div class="grid grid-cols-2 gap-4 bg-slate-950/80 p-4 rounded-2xl border border-white/10 text-center">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Your Speed</div>
+                            <div id="reactionScore" class="text-xl font-black text-neuroBlue">-- ms</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Brain Speed Rank</div>
+                            <div id="reactionRank" class="text-sm font-bold text-neuroYellow">Unranked</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arcade Game 2: Brainy Memory Grid Game -->
+                <div class="glass-panel p-6 sm:p-8 rounded-3xl flex flex-col justify-between border-2 border-neuroYellow space-y-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-neuroYellow/20 text-neuroYellow flex items-center justify-center font-bold">
+                                    🧩
+                                </div>
+                                <h4 class="text-xl font-extrabold text-white">Memory Grid Challenge</h4>
+                            </div>
+                            <span class="text-xs font-bold text-neuroPink bg-slate-900 px-3 py-1 rounded-full border border-white/10">Short-Term Memory</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300">
+                            Watch the light sequence flash across the grid, then repeat the pattern back in exact order!
+                        </p>
+                    </div>
+
+                    <!-- 3x3 Memory Tiles Grid -->
+                    <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto w-full py-2">
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="0"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="1"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="2"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="3"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="4"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="5"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="6"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="7"></button>
+                        <button class="memory-tile h-20 rounded-2xl bg-slate-900 border-2 border-white/10 transition-all active:scale-95" data-tile="8"></button>
+                    </div>
+
+                    <!-- Game Control & Status -->
+                    <div class="flex items-center justify-between bg-slate-950/80 p-4 rounded-2xl border border-white/10">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Current Sequence</div>
+                            <div id="memoryLevelText" class="text-base font-extrabold text-neuroYellow">Level 1</div>
+                        </div>
+                        <button id="startMemoryBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-neuroYellow to-neuroPink text-slate-950 font-black text-sm shadow-md hover:brightness-110 transition-all">
+                            Start Memory Test
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Interactive Brain Myth Busters Quiz Section -->
+        <section id="myths" class="max-w-7xl mx-auto px-4 scroll-mt-24">
+            <div class="text-center space-y-3 mb-12">
+                <div class="inline-block px-4 py-1 rounded-full bg-neuroGreen/20 text-neuroGreen font-bold text-xs uppercase tracking-widest">
+                    Fact or Fiction?
+                </div>
+                <h3 class="text-3xl sm:text-5xl font-black">
+                    Brain <span class="text-neuroGreen">Myth Busters!</span>
+                </h3>
+                <p class="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base">
+                    Think you know everything about the brain? Click cards to flip them over and discover the real scientific truth!
+                </p>
+            </div>
+
+            <!-- 3D Flip Card Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                <!-- Card 1 -->
+                <div class="flip-card h-80 cursor-pointer" onclick="flipMythCard(this, 10)">
+                    <div class="flip-card-inner">
+                        <!-- Front -->
+                        <div class="flip-card-front glass-panel p-6 flex flex-col justify-between items-center border-2 border-neuroPink">
+                            <div class="w-12 h-12 rounded-2xl bg-neuroPink/20 text-neuroPink flex items-center justify-center font-black text-xl">
+                                ❓
+                            </div>
+                            <h4 class="text-lg font-extrabold text-white text-center">
+                                "Myth 1: Do we only use 10% of our brains?"
+                            </h4>
+                            <span class="text-xs font-bold text-neuroYellow bg-slate-900 px-4 py-2 rounded-full border border-white/10">
+                                Click to Reveal Truth (+10 XP)
+                            </span>
+                        </div>
+                        <!-- Back -->
+                        <div class="flip-card-back glass-panel p-6 flex flex-col justify-between items-center border-2 border-neuroGreen bg-slate-900">
+                            <span class="text-xs font-black text-neuroGreen uppercase tracking-widest">BUSTED! ❌</span>
+                            <p class="text-xs sm:text-sm text-slate-200 text-center font-medium leading-relaxed">
+                                You use <strong>100% of your brain!</strong> Even when you're sleeping, your brain is busy processing memories, dreaming, and controlling breathing.
+                            </p>
+                            <div class="text-xs font-bold text-neuroGreen flex items-center gap-1">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> Fact Unlocked!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="flip-card h-80 cursor-pointer" onclick="flipMythCard(this, 10)">
+                    <div class="flip-card-inner">
+                        <!-- Front -->
+                        <div class="flip-card-front glass-panel p-6 flex flex-col justify-between items-center border-2 border-neuroBlue">
+                            <div class="w-12 h-12 rounded-2xl bg-neuroBlue/20 text-neuroBlue flex items-center justify-center font-black text-xl">
+                                🧠
+                            </div>
+                            <h4 class="text-lg font-extrabold text-white text-center">
+                                "Myth 2: Are some people 'Left-Brained' and others 'Right-Brained'?"
+                            </h4>
+                            <span class="text-xs font-bold text-neuroYellow bg-slate-900 px-4 py-2 rounded-full border border-white/10">
+                                Click to Reveal Truth (+10 XP)
+                            </span>
+                        </div>
+                        <!-- Back -->
+                        <div class="flip-card-back glass-panel p-6 flex flex-col justify-between items-center border-2 border-neuroGreen bg-slate-900">
+                            <span class="text-xs font-black text-neuroGreen uppercase tracking-widest">BUSTED! ❌</span>
+                            <p class="text-xs sm:text-sm text-slate-200 text-center font-medium leading-relaxed">
+                                Both brain halves work together as a team! The thick super-highway of nerves connecting them (Corpus Callosum) ensures both sides chat constantly.
+                            </p>
+                            <div class="text-xs font-bold text-neuroGreen flex items-center gap-1">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> Fact Unlocked!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="flip-card h-80 cursor-pointer" onclick="flipMythCard(this, 10)">
+                    <div class="flip-card-inner">
+                        <!-- Front -->
+                        <div class="flip-card-front glass-panel p-6 flex flex-col justify-between items-center border-2 border-neuroYellow">
+                            <div class="w-12 h-12 rounded-2xl bg-neuroYellow/20 text-neuroYellow flex items-center justify-center font-black text-xl">
+                                💡
+                            </div>
+                            <h4 class="text-lg font-extrabold text-white text-center">
+                                "Myth 3: Is brain size directly related to intelligence?"
+                            </h4>
+                            <span class="text-xs font-bold text-neuroYellow bg-slate-900 px-4 py-2 rounded-full border border-white/10">
+                                Click to Reveal Truth (+10 XP)
+                            </span>
+                        </div>
+                        <!-- Back -->
+                        <div class="flip-card-back glass-panel p-6 flex flex-col justify-between items-center border-2 border-neuroGreen bg-slate-900">
+                            <span class="text-xs font-black text-neuroGreen uppercase tracking-widest">BUSTED! ❌</span>
+                            <p class="text-xs sm:text-sm text-slate-200 text-center font-medium leading-relaxed">
+                                Whales have brains 5x bigger than humans, but brain power depends on how densely packed and connected your <strong>synapses</strong> are, not raw weight!
+                            </p>
+                            <div class="text-xs font-bold text-neuroGreen flex items-center gap-1">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> Fact Unlocked!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Earned Brain Badges Trophy Room -->
+        <section class="max-w-7xl mx-auto px-4">
+            <div class="glass-panel p-8 sm:p-10 rounded-3xl space-y-6">
+                <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="award" class="w-8 h-8 text-neuroYellow"></i>
+                        <div>
+                            <h4 class="text-2xl font-black text-white">Your Brain Badges</h4>
+                            <p class="text-xs text-slate-400">Unlock all 4 badges by completing activities across NeuroQuest!</p>
+                        </div>
+                    </div>
+                    <span id="badgeCountText" class="text-xs font-extrabold text-neuroYellow bg-slate-900 px-3 py-1.5 rounded-full border border-white/10">
+                        0 / 4 Unlocked
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <!-- Badge 1 -->
+                    <div id="badge-lobe" class="p-4 rounded-2xl bg-slate-900/80 border border-white/10 flex flex-col items-center text-center opacity-40 transition-all">
+                        <div class="w-14 h-14 rounded-full bg-neuroPink/20 text-neuroPink flex items-center justify-center text-2xl mb-2">
+                            🗺️
+                        </div>
+                        <h5 class="text-sm font-bold text-white">Brain Cartographer</h5>
+                        <p class="text-[10px] text-slate-400 mt-1">Explore all 6 brain lobes</p>
+                    </div>
+
+                    <!-- Badge 2 -->
+                    <div id="badge-neuron" class="p-4 rounded-2xl bg-slate-900/80 border border-white/10 flex flex-col items-center text-center opacity-40 transition-all">
+                        <div class="w-14 h-14 rounded-full bg-neuroYellow/20 text-neuroYellow flex items-center justify-center text-2xl mb-2">
+                            ⚡
+                        </div>
+                        <h5 class="text-sm font-bold text-white">Master Engineer</h5>
+                        <p class="text-[10px] text-slate-400 mt-1">Build & fire a full neuron</p>
+                    </div>
+
+                    <!-- Badge 3 -->
+                    <div id="badge-reflex" class="p-4 rounded-2xl bg-slate-900/80 border border-white/10 flex flex-col items-center text-center opacity-40 transition-all">
+                        <div class="w-14 h-14 rounded-full bg-neuroBlue/20 text-neuroBlue flex items-center justify-center text-2xl mb-2">
+                            🚀
+                        </div>
+                        <h5 class="text-sm font-bold text-white">Lightning Mind</h5>
+                        <p class="text-[10px] text-slate-400 mt-1">Test your neural reaction speed</p>
+                    </div>
+
+                    <!-- Badge 4 -->
+                    <div id="badge-myths" class="p-4 rounded-2xl bg-slate-900/80 border border-white/10 flex flex-col items-center text-center opacity-40 transition-all">
+                        <div class="w-14 h-14 rounded-full bg-neuroGreen/20 text-neuroGreen flex items-center justify-center text-2xl mb-2">
+                            🔍
+                        </div>
+                        <h5 class="text-sm font-bold text-white">Myth Buster</h5>
+                        <p class="text-[10px] text-slate-400 mt-1">Debunk all 3 brain myths</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/10 glass-panel py-8 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-xl bg-neuroPink flex items-center justify-center font-bold text-white text-xs">
+                    🧠
+                </div>
+                <span class="font-bold text-sm tracking-wide text-white">NeuroQuest: Journey into the Brain</span>
+            </div>
+            <p class="text-xs text-slate-400">
+                Made for curious young minds. Keep asking questions and exploring your super brain!
+            </p>
+        </div>
+    </footer>
+
+    <!-- AUDIO SYNTHESIS & MAIN LOGIC ENGINE SCRIPT -->
+    <script>
+        // Lucide icons setup
+        lucide.createIcons();
+
+        // Robust Audio Synth Generator with Autoplay Policy Unlocking
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                this.isUnlocked = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        this.ctx = new AudioContextClass();
+                    }
+                }
+            }
+
+            async unlock() {
+                this.init();
+                if (!this.ctx) return;
+
+                if (this.ctx.state === 'suspended') {
+                    await this.ctx.resume();
+                }
+
+                if (this.ctx.state === 'running') {
+                    this.isUnlocked = true;
+                    const banner = document.getElementById('audioUnlockBanner');
+                    if (banner) {
+                        banner.style.opacity = '0';
+                        banner.style.transition = 'opacity 0.5s ease';
+                        setTimeout(() => banner.remove(), 500);
+                    }
+                }
+            }
+
+            playTone(freq, type = 'sine', duration = 0.15, volume = 0.15) {
+                if (!this.enabled) return;
+                
+                // Lazy init and unlock attempt
+                if (!this.ctx || this.ctx.state === 'suspended') {
+                    this.unlock();
+                }
+
+                if (!this.ctx || this.ctx.state !== 'running') return;
+
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {
+                    console.error("Audio synth error:", e);
+                }
+            }
+
+            spark() {
+                this.playTone(587.33, 'triangle', 0.1, 0.2);
+                setTimeout(() => this.playTone(880, 'sine', 0.2, 0.2), 80);
+            }
+
+            success() {
+                this.playTone(523.25, 'sine', 0.1, 0.2);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.2), 100);
+                setTimeout(() => this.playTone(783.99, 'sine', 0.25, 0.25), 200);
+            }
+        }
+
+        const sound = new SoundFX();
+
+        // Unlock audio on ANY first user touch or click event
+        const unlockAudioOnGesture = () => {
+            sound.unlock();
+            document.removeEventListener('click', unlockAudioOnGesture);
+            document.removeEventListener('touchstart', unlockAudioOnGesture);
+            document.removeEventListener('keydown', unlockAudioOnGesture);
+        };
+
+        document.addEventListener('click', unlockAudioOnGesture);
+        document.addEventListener('touchstart', unlockAudioOnGesture);
+        document.addEventListener('keydown', unlockAudioOnGesture);
+
+        // Sound Toggle Button
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const soundIcon = document.getElementById('soundIcon');
+        soundToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent triggering other listeners
+            sound.unlock();
+            sound.enabled = !sound.enabled;
+            if (sound.enabled) {
+                soundIcon.setAttribute('data-lucide', 'volume-2');
+                soundIcon.className = 'w-5 h-5 text-neuroGreen';
+                sound.spark();
+            } else {
+                soundIcon.setAttribute('data-lucide', 'volume-x');
+                soundIcon.className = 'w-5 h-5 text-slate-500';
+            }
+            lucide.createIcons();
+        });
+
+        // Background Synapse Canvas Animation
+        const canvas = document.getElementById('synapseCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.radius = Math.random() * 2 + 1;
+                this.color = ['#FF477E', '#4CC9F0', '#FFD166', '#7209B7'][Math.floor(Math.random() * 4)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.6;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 45; i++) particles.push(new Particle());
+
+        function animateSynapses() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 110) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = particles[i].color;
+                        ctx.globalAlpha = 0.15 * (1 - dist / 110);
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateSynapses);
+        }
+        animateSynapses();
+
+        // Gamification Engine
+        let userXP = 0;
+        let userLevel = 1;
+        const ranks = ["Cadet Explorer", "Synapse Ranger", "Brainiac Captain", "Neuro Genius"];
+        const unlockedBadges = new Set();
+
+        function addXP(amount) {
+            userXP += amount;
+            sound.spark();
+            
+            if (userXP >= 100) {
+                userXP -= 100;
+                userLevel++;
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                sound.success();
+            }
+
+            document.getElementById('userLevel').textContent = userLevel;
+            document.getElementById('xpText').textContent = `${userXP} / 100`;
+            document.getElementById('xpProgressBar').style.width = `${userXP}%`;
+            
+            const rankIndex = Math.min(userLevel - 1, ranks.length - 1);
+            document.getElementById('userRankTitle').textContent = ranks[rankIndex];
+        }
+
+        function unlockBadge(badgeId) {
+            if (!unlockedBadges.has(badgeId)) {
+                unlockedBadges.add(badgeId);
+                const el = document.getElementById(`badge-${badgeId}`);
+                if (el) {
+                    el.classList.remove('opacity-40');
+                    el.classList.add('border-neuroYellow', 'shadow-lg', 'scale-105');
+                }
+                document.getElementById('badgeCountText').textContent = `${unlockedBadges.size} / 4 Unlocked`;
+                confetti({ particleCount: 50, spread: 50 });
+            }
+        }
+
+        // Neuron Ned Mascot Speeches
+        const nedTips = [
+            "Your brain produces enough electricity to power a small LED lightbulb!",
+            "Practice makes synapses stronger! That's how you learn guitar or skateboarding!",
+            "Drinking water and sleeping 9 hours gives your brain super powers!",
+            "Your brain is faster than the world's most powerful supercomputer!"
+        ];
+        let tipIdx = 0;
+        const mascotNed = document.getElementById('mascotNed');
+        const nedSpeechBubble = document.getElementById('nedSpeechBubble');
+
+        mascotNed.addEventListener('click', () => {
+            tipIdx = (tipIdx + 1) % nedTips.length;
+            nedSpeechBubble.querySelector('p').textContent = `"${nedTips[tipIdx]}"`;
+            sound.playTone(440, 'sine', 0.1);
+        });
+
+        // Lobe Explorer Data
+        const lobesData = {
+            frontal: {
+                title: "Frontal Lobe",
+                subtitle: "The Control Center",
+                icon: "🧠",
+                color: "#FF477E",
+                superpower: "Decision making, solving math puzzles, planning your day, and controlling your emotions!",
+                fact: "The Frontal Lobe keeps growing until you are around 25 years old! That's why grown-ups are still learning how to make great decisions."
+            },
+            parietal: {
+                title: "Parietal Lobe",
+                subtitle: "The Touch & Spatial Sensor",
+                icon: "🖐️",
+                color: "#4CC9F0",
+                superpower: "Feeling warmth, pressure, texture, and knowing left from right without looking!",
+                fact: "It processes sensory input from your skin so fast you drop a hot cup in less than a single second!"
+            },
+            occipital: {
+                title: "Occipital Lobe",
+                subtitle: "The Vision Center",
+                icon: "👁️",
+                color: "#FFD166",
+                superpower: "Turns raw light signals from your eyes into colorful 3D images of video games and cartoons!",
+                fact: "Your eyes actually capture images upside down—the Occipital Lobe flips them right-side up for you!"
+            },
+            temporal: {
+                title: "Temporal Lobe",
+                subtitle: "The Music & Memory Vault",
+                icon: "🎵",
+                color: "#06D6A0",
+                superpower: "Understanding spoken language, hearing music beats, and holding long-term memories!",
+                fact: "Contains the Hippocampus—a tiny sea-horse shaped structure that converts short-term memories into long-term ones!"
+            },
+            cerebellum: {
+                title: "Cerebellum",
+                subtitle: "The Balance Master",
+                icon: "🏃",
+                color: "#7209B7",
+                superpower: "Helps you balance on one foot, ride a bike, and execute smooth sports moves!",
+                fact: "Means 'Little Brain' in Latin, but contains more than half of all the brain's neurons!"
+            },
+            brainstem: {
+                title: "Brainstem",
+                subtitle: "The Life Support Engine",
+                icon: "🫀",
+                color: "#F72585",
+                superpower: "Controls automatic jobs like heartbeats, breathing, digestion, and swallowing!",
+                fact: "Works 24/7 without you ever needing to remind it to keep your heart pumping!"
+            }
+        };
+
+        const exploredLobes = new Set();
+        let currentSelectedLobe = 'frontal';
+
+        document.querySelectorAll('.brain-part').forEach(part => {
+            part.addEventListener('click', (e) => {
+                const partName = e.target.getAttribute('data-part');
+                selectLobe(partName);
+            });
+        });
+
+        function selectLobe(partName) {
+            currentSelectedLobe = partName;
+            const data = lobesData[partName];
+            
+            document.querySelectorAll('.brain-part').forEach(p => p.classList.remove('active-lobe'));
+            const activeEl = document.getElementById(`lobe-${partName}`);
+            if (activeEl) activeEl.classList.add('active-lobe');
+
+            document.getElementById('lobeTitle').textContent = data.title;
+            document.getElementById('lobeSubtitle').textContent = data.subtitle;
+            document.getElementById('lobeIconBox').textContent = data.icon;
+            document.getElementById('lobeIconBox').style.backgroundColor = data.color;
+            document.getElementById('lobeSuperpower').textContent = data.superpower;
+            document.getElementById('lobeFact').textContent = data.fact;
+            
+            sound.playTone(350 + Math.random() * 200, 'sine', 0.15);
+        }
+
+        document.getElementById('exploreLobeXpBtn').addEventListener('click', () => {
+            if (!exploredLobes.has(currentSelectedLobe)) {
+                exploredLobes.add(currentSelectedLobe);
+                addXP(20);
+                if (exploredLobes.size >= 6) unlockBadge('lobe');
+            }
+        });
+
+        document.getElementById('listenLobeBtn').addEventListener('click', () => {
+            sound.spark();
+        });
+
+        // Interactive Neuron Builder Mini-Game Logic
+        const requiredParts = ['dendrites', 'soma', 'axon', 'myelin', 'synapse'];
+        const currentAssembledParts = new Set();
+
+        document.querySelectorAll('.neuron-part-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const part = btn.getAttribute('data-part');
+                if (!currentAssembledParts.has(part)) {
+                    currentAssembledParts.add(part);
+                    
+                    // Show part on stage SVG
+                    const stageEl = document.getElementById(`stage-${part}`);
+                    if (stageEl) stageEl.classList.remove('opacity-15');
+
+                    // Button style update
+                    btn.classList.add('border-neuroGreen', 'bg-neuroGreen/10');
+                    const icon = btn.querySelector('.status-icon');
+                    if (icon) {
+                        icon.setAttribute('data-lucide', 'check-circle-2');
+                        icon.className = 'w-5 h-5 text-neuroGreen status-icon';
+                        lucide.createIcons();
+                    }
+
+                    sound.playTone(400 + currentAssembledParts.size * 100, 'triangle', 0.15);
+
+                    // Check if complete
+                    if (currentAssembledParts.size === requiredParts.length) {
+                        const fireBtn = document.getElementById('fireSignalBtn');
+                        fireBtn.disabled = false;
+                        fireBtn.className = 'px-8 py-4 rounded-2xl bg-gradient-to-r from-neuroYellow to-neuroPink text-slate-950 font-black text-base shadow-xl shadow-neuroPink/30 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-3 animate-pulse';
+                        document.getElementById('assemblyStatusText').textContent = "Neuron Cable Complete! Press Fire Signal!";
+                    }
+                }
+            });
+        });
+
+        document.getElementById('fireSignalBtn').addEventListener('click', () => {
+            const spark = document.getElementById('pulseSpark');
+            spark.classList.remove('hidden');
+            
+            // Animate spark across the neuron
+            let pos = 50;
+            const interval = setInterval(() => {
+                pos += 15;
+                spark.setAttribute('cx', pos);
+                sound.playTone(200 + pos, 'sine', 0.05);
+
+                if (pos >= 610) {
+                    clearInterval(interval);
+                    sound.success();
+                    confetti({ particleCount: 70, spread: 60 });
+                    addXP(30);
+                    unlockBadge('neuron');
+                    document.getElementById('assemblyStatusText').textContent = "⚡ Signal Fired Successfully! (+30 XP)";
+                }
+            }, 30);
+        });
+
+        document.getElementById('resetNeuronBtn').addEventListener('click', () => {
+            currentAssembledParts.clear();
+            requiredParts.forEach(part => {
+                const stageEl = document.getElementById(`stage-${part}`);
+                if (stageEl) stageEl.classList.add('opacity-15');
+            });
+
+            document.querySelectorAll('.neuron-part-btn').forEach(btn => {
+                btn.classList.remove('border-neuroGreen', 'bg-neuroGreen/10');
+                const icon = btn.querySelector('.status-icon');
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'plus-circle');
+                    icon.className = 'w-5 h-5 text-slate-400 status-icon';
+                }
+            });
+            lucide.createIcons();
+
+            const fireBtn = document.getElementById('fireSignalBtn');
+            fireBtn.disabled = true;
+            fireBtn.className = 'px-8 py-4 rounded-2xl bg-slate-800 text-slate-500 font-black text-base shadow-lg transition-all flex items-center gap-3 cursor-not-allowed';
+            document.getElementById('pulseSpark').classList.add('hidden');
+            document.getElementById('assemblyStatusText').textContent = "Assemble all 5 parts to fire the signal!";
+        });
+
+        // Arcade 1: Reaction Time Reflex Test Logic
+        const reactionPad = document.getElementById('reactionPad');
+        const reactionMainText = document.getElementById('reactionMainText');
+        const reactionSubText = document.getElementById('reactionSubText');
+        let reactionState = 'idle'; // idle, waiting, ready
+        let reactionStartTime = 0;
+        let reactionTimeout = null;
+
+        reactionPad.addEventListener('click', () => {
+            if (reactionState === 'idle') {
+                reactionState = 'waiting';
+                reactionPad.className = "w-full h-56 rounded-2xl bg-neuroPink border-2 border-white/20 flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-300 p-4 text-center";
+                reactionMainText.textContent = "Wait for GREEN...";
+                reactionSubText.textContent = "Don't click yet!";
+
+                const delay = 2000 + Math.random() * 2500;
+                reactionTimeout = setTimeout(() => {
+                    reactionState = 'ready';
+                    reactionStartTime = Date.now();
+                    reactionPad.className = "w-full h-56 rounded-2xl bg-neuroGreen text-slate-950 border-2 border-white flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-300 p-4 text-center animate-bounce-short";
+                    reactionMainText.textContent = "TAP NOW!";
+                    reactionSubText.textContent = "FAST FAST!";
+                    sound.spark();
+                }, delay);
+
+            } else if (reactionState === 'waiting') {
+                clearTimeout(reactionTimeout);
+                reactionState = 'idle';
+                reactionPad.className = "w-full h-56 rounded-2xl bg-slate-900 border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-300 p-4 text-center";
+                reactionMainText.textContent = "Too Early! Click to retry";
+                reactionSubText.textContent = "Wait for the green screen!";
+
+            } else if (reactionState === 'ready') {
+                const elapsed = Date.now() - reactionStartTime;
+                reactionState = 'idle';
+                reactionPad.className = "w-full h-56 rounded-2xl bg-slate-900 border-2 border-white/20 flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-300 p-4 text-center";
+                
+                document.getElementById('reactionScore').textContent = `${elapsed} ms`;
+                
+                let rank = "Cheetah Brain 🐆";
+                if (elapsed > 350) rank = "Sloth Mind 🦥";
+                else if (elapsed > 260) rank = "Quick Rabbit 🐇";
+                
+                document.getElementById('reactionRank').textContent = rank;
+                reactionMainText.textContent = `${elapsed} ms! Click to test again`;
+                reactionSubText.textContent = `Rank: ${rank}`;
+
+                addXP(25);
+                unlockBadge('reflex');
+            }
+        });
+
+        // Arcade 2: Brainy Memory Grid Game Logic
+        const memoryTiles = document.querySelectorAll('.memory-tile');
+        let memorySequence = [];
+        let playerSequence = [];
+        let memoryLevel = 1;
+        let isPlayingMemory = false;
+
+        document.getElementById('startMemoryBtn').addEventListener('click', startMemoryGame);
+
+        function startMemoryGame() {
+            memorySequence = [];
+            playerSequence = [];
+            memoryLevel = 1;
+            document.getElementById('memoryLevelText').textContent = `Level 1`;
+            nextMemoryRound();
+        }
+
+        function nextMemoryRound() {
+            playerSequence = [];
+            document.getElementById('memoryLevelText').textContent = `Level ${memoryLevel}`;
+            memorySequence.push(Math.floor(Math.random() * 9));
+            playMemorySequence();
+        }
+
+        function playMemorySequence() {
+            isPlayingMemory = true;
+            let i = 0;
+            const interval = setInterval(() => {
+                flashTile(memorySequence[i]);
+                i++;
+                if (i >= memorySequence.length) {
+                    clearInterval(interval);
+                    isPlayingMemory = false;
+                }
+            }, 600);
+        }
+
+        function flashTile(idx) {
+            const tile = memoryTiles[idx];
+            tile.classList.add('bg-neuroYellow', 'scale-105');
+            sound.playTone(300 + idx * 50, 'sine', 0.2);
+            setTimeout(() => {
+                tile.classList.remove('bg-neuroYellow', 'scale-105');
+            }, 350);
+        }
+
+        memoryTiles.forEach(tile => {
+            tile.addEventListener('click', () => {
+                if (isPlayingMemory) return;
+                const idx = parseInt(tile.getAttribute('data-tile'));
+                flashTile(idx);
+                playerSequence.push(idx);
+
+                // Verify match
+                const currentStep = playerSequence.length - 1;
+                if (playerSequence[currentStep] !== memorySequence[currentStep]) {
+                    document.getElementById('memoryLevelText').textContent = `Game Over! Retry`;
+                    sound.playTone(150, 'sawtooth', 0.3);
+                    return;
+                }
+
+                if (playerSequence.length === memorySequence.length) {
+                    memoryLevel++;
+                    addXP(15);
+                    setTimeout(nextMemoryRound, 800);
+                }
+            });
+        });
+
+        // 3D Myth Card Flipping & XP Reward
+        const flippedMyths = new Set();
+        function flipMythCard(cardEl, xp) {
+            cardEl.classList.toggle('flipped');
+            sound.playTone(500, 'triangle', 0.15);
+            if (!flippedMyths.has(cardEl)) {
+                flippedMyths.add(cardEl);
+                addXP(xp);
+                if (flippedMyths.size >= 3) unlockBadge('myths');
+            }
+        }
+    </script>
+</body>
+</html>
